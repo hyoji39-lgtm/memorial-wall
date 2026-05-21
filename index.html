@@ -488,56 +488,67 @@
   .toast.error { background: rgba(180, 50, 60, 0.95); }
   .toast.success { background: rgba(50, 140, 80, 0.95); }
 
-  /* ============ 벽에 붙이기 모드: 그리드 칸 시스템 ============ */
-  /* 평소엔 안 보임, placement 모드일 때만 빈 칸들이 표시됨 */
+  /* ============ 그리드 칸 시스템 ============ */
+  /* 그리드는 항상 존재 - 평소엔 칸이 안 보이지만 메모는 그 안에 들어감 */
   .place-zone {
     position: absolute;
     inset: 0;
-    z-index: 6;
-    display: none;
-  }
-
-  .place-zone.active {
+    z-index: 5;
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    grid-template-rows: repeat(5, 1fr);
-    gap: 12px;
-    padding: 20px;
+    grid-template-columns: repeat(auto-fill, 90px);
+    grid-auto-rows: 70px;
+    gap: 8px;
+    padding: 15px;
+    justify-content: center;
+    pointer-events: none;
   }
 
-  /* 빈 칸 (배치 가능) */
+  /* 배치 모드 활성화: 클릭 가능 + 빈 칸 보임 */
+  .place-zone.active {
+    z-index: 6;
+    pointer-events: auto;
+  }
+
+  /* 평소에도 메모는 클릭 가능해야 함 (라이트박스 / 액션 메뉴) */
+  .place-zone .placed-memo {
+    pointer-events: auto;
+  }
+
+  /* 빈 칸 (배치 가능) - 평소엔 안 보임 */
   .slot {
     position: relative;
-    border: 1.5px dashed rgba(120, 130, 145, 0.35);
+    border: 1.5px dashed transparent;
     border-radius: 3px;
-    background: rgba(255, 255, 255, 0.04);
-    cursor: pointer;
+    background: transparent;
+    cursor: default;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .slot:hover {
+  /* 배치 모드일 때만 빈 칸이 보임 */
+  .place-zone.active .slot:not(.occupied) {
+    border-color: rgba(120, 130, 145, 0.35);
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+  }
+
+  .place-zone.active .slot:not(.occupied):hover {
     border-color: rgba(176, 136, 56, 0.7);
     background: rgba(255, 244, 215, 0.12);
     box-shadow: inset 0 0 0 2px rgba(176, 136, 56, 0.2);
   }
 
-  /* 이미 메모가 있는 칸 (배치 불가) */
+  /* 이미 메모가 있는 칸 - 평소에도 메모를 담고 있음 */
   .slot.occupied {
     border-color: transparent;
     background: transparent;
-    cursor: not-allowed;
+    cursor: default;
   }
 
-  .slot.occupied:hover {
-    box-shadow: none;
-    background: transparent;
-  }
-
-  /* 칸 안의 + 아이콘 (빈 칸 표시) */
-  .slot::after {
+  /* 빈 칸 안 + 아이콘 (배치 모드에서만) */
+  .place-zone.active .slot:not(.occupied)::after {
     content: '+';
     color: rgba(120, 130, 145, 0.4);
     font-size: 1.5rem;
@@ -545,12 +556,8 @@
     transition: color 0.2s;
   }
 
-  .slot:hover::after {
+  .place-zone.active .slot:not(.occupied):hover::after {
     color: rgba(176, 136, 56, 0.7);
-  }
-
-  .slot.occupied::after {
-    display: none;
   }
 
   /* 안내 메시지 */
@@ -599,18 +606,19 @@
 
   /* 벽에 붙은 메모지 */
   .placed-memo {
-    position: absolute;
+    position: relative;
     width: 80px;
-    transform: translate(-50%, -50%);
+    margin: 0 auto;
+    transform: rotate(var(--rot, -3deg));
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
     animation: memoStick 0.4s ease-out;
     cursor: pointer;
   }
 
   @keyframes memoStick {
-    0% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); opacity: 0; }
-    60% { transform: translate(-50%, -50%) scale(0.96) rotate(var(--rot, -3deg)); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1) rotate(var(--rot, -3deg)); opacity: 1; }
+    0% { transform: scale(1.2) rotate(0deg); opacity: 0; }
+    60% { transform: scale(0.96) rotate(var(--rot, -3deg)); opacity: 1; }
+    100% { transform: scale(1) rotate(var(--rot, -3deg)); opacity: 1; }
   }
 
   /* 메모지 본체 */
@@ -1406,11 +1414,6 @@
       <!-- 배치 모드 안내 (그리드 위에 떠있음) -->
       <div class="place-hint" id="placeHint">📌 원하는 칸을 클릭해서 붙여주세요</div>
 
-      <!-- 아래로 더 있다는 힌트 -->
-      <div class="scroll-hint-down" id="scrollHintDown">
-        <span>↓</span><span>아래로 스크롤</span>
-      </div>
-
       <!-- 저장 버튼 (우측 하단) -->
       <button class="save-fab" id="saveFab" onclick="saveMemos()">
         <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2115,7 +2118,7 @@
     const zone = document.getElementById('placeZone');
     const hint = document.getElementById('placeHint');
 
-    // 그리드 칸 생성 (메모 영역의 보이는 부분에 50칸)
+    // 그리드 칸이 최신 상태인지 확인 (필요시 확장)
     renderSlots();
 
     zone.classList.add('active');
@@ -2135,17 +2138,17 @@
     const hint = document.getElementById('placeHint');
 
     zone.classList.remove('active');
-    zone.innerHTML = ''; // 그리드 칸 제거
     if (hint) hint.classList.remove('show');
 
     zone.removeEventListener('click', handleSlotClick);
     document.removeEventListener('keydown', cancelOnEsc);
 
-    // 위치 수정 모드 종료
+    // 그리드는 그대로 두고 (메모가 안에 들어있음)
     editingMemoEl = null;
   }
 
-  // 그리드 칸 렌더링 (스크롤 영역 전체에 칸 깔기)
+  // 그리드 칸 렌더링 - 메모를 슬롯 안에 직접 넣는 방식
+  // 이 함수는 페이지 로드 시 1번, 그리고 메모 추가 시 슬롯 수 확장이 필요할 때만 호출
   function renderSlots() {
     const zone = document.getElementById('placeZone');
     const scrollArea = document.getElementById('memosScrollArea');
@@ -2153,45 +2156,47 @@
 
     if (!zone || !scrollArea || !inner) return;
 
-    // 이미 사용 중인 칸 인덱스 수집
-    const occupiedIndices = new Set();
+    // 현재 사용 중인 칸 인덱스 + 메모 요소 매핑
+    const memosBySlot = new Map();
     document.querySelectorAll('.placed-memo').forEach(el => {
-      if (el._memoData && el._memoData.slotIndex !== undefined) {
-        // 수정 중인 메모는 자기 칸을 비워둠 (다른 곳으로 이동 가능)
-        if (el !== editingMemoEl) {
-          occupiedIndices.add(el._memoData.slotIndex);
-        }
+      if (el._memoData && el._memoData.slotIndex !== undefined && el._memoData.slotIndex !== null) {
+        memosBySlot.set(el._memoData.slotIndex, el);
       }
     });
 
-    // 필요한 섹션 수 계산
-    // - 현재 영역 높이 기준 + 사용 중인 가장 큰 칸 인덱스 + 여유분
+    // 필요한 슬롯 수 계산
     const areaHeight = scrollArea.clientHeight;
-    const maxUsedIndex = occupiedIndices.size > 0 ? Math.max(...occupiedIndices) : -1;
-    const sectionsByUsed = Math.floor(maxUsedIndex / 50) + 1; // 사용 중인 칸 기준
-    const sectionsByHeight = Math.ceil(inner.offsetHeight / areaHeight); // 영역 높이 기준
-    // 둘 중 큰 값 + 1 (항상 한 섹션 여유)
-    const sections = Math.max(sectionsByUsed, sectionsByHeight) + 1;
+    const cols = getColsPerRow();
+    const rowsPerSection = Math.ceil((areaHeight - 30) / 78); // 영역 높이 기준 행 수
+    const slotsPerSection = cols * rowsPerSection;
 
-    // 영역 높이도 같이 확장
+    const maxUsedIndex = memosBySlot.size > 0 ? Math.max(...memosBySlot.keys()) : -1;
+    const sectionsByUsed = Math.floor(maxUsedIndex / slotsPerSection) + 1;
+    const sections = Math.max(sectionsByUsed, 1) + 1; // 항상 한 섹션 여유
+
+    const totalSlots = sections * slotsPerSection;
+
+    // 영역 높이 조정
     const newMinHeight = sections * areaHeight;
     if (newMinHeight > inner.offsetHeight) {
       inner.style.minHeight = newMinHeight + 'px';
     }
 
-    zone.style.height = newMinHeight + 'px';
-    zone.style.gridTemplateRows = `repeat(${sections * 5}, 1fr)`;
-
-    const totalSlots = sections * 50;
+    // 기존 슬롯 다 지우고 새로 만들기 (메모는 따로 보존)
     zone.innerHTML = '';
 
     for (let i = 0; i < totalSlots; i++) {
       const slot = document.createElement('div');
       slot.className = 'slot';
       slot.dataset.slotIndex = i;
-      if (occupiedIndices.has(i)) {
+
+      // 이 슬롯에 메모가 있으면 슬롯 안으로 넣기
+      if (memosBySlot.has(i)) {
         slot.classList.add('occupied');
+        const memoEl = memosBySlot.get(i);
+        slot.appendChild(memoEl);
       }
+
       zone.appendChild(slot);
     }
   }
@@ -2223,40 +2228,80 @@
 
   // 슬롯 인덱스 → 화면상 위치(px) 계산
   function slotIndexToPosition(slotIndex) {
+    // 실제 그리드의 DOM 요소 위치를 기반으로 계산 (가장 정확함)
+    const zone = document.getElementById('placeZone');
+    const inner = document.getElementById('memosInner');
+    if (!zone || !inner) return { x: 0, y: 0 };
+
+    const slot = zone.querySelector(`.slot[data-slot-index="${slotIndex}"]`);
+    if (slot) {
+      // 실제 슬롯 요소가 있으면 그 중심 좌표 사용
+      const slotRect = slot.getBoundingClientRect();
+      const innerRect = inner.getBoundingClientRect();
+      return {
+        x: slotRect.left - innerRect.left + slotRect.width / 2,
+        y: slotRect.top - innerRect.top + slotRect.height / 2
+      };
+    }
+
+    // 슬롯이 아직 렌더링 안 됐으면 계산식으로 추정
     const scrollArea = document.getElementById('memosScrollArea');
     const areaWidth = scrollArea.clientWidth;
-    const areaHeight = scrollArea.clientHeight;
-    const padding = 20;
-    const gap = 12;
-    const cols = 10;
-    const rows = 5;
-    const cellW = (areaWidth - padding * 2 - gap * (cols - 1)) / cols;
-    const cellH = (areaHeight - padding * 2 - gap * (rows - 1)) / rows;
+    const padding = 15;
+    const gap = 8;
+    const cellW = 90;
+    const cellH = 70;
+    // 한 줄에 들어갈 칸 개수 계산 (auto-fill과 동일한 로직)
+    const cols = Math.max(1, Math.floor((areaWidth - padding * 2 + gap) / (cellW + gap)));
+    const totalGapW = gap * (cols - 1);
+    const startX = padding + (areaWidth - padding * 2 - cols * cellW - totalGapW) / 2;
 
-    const section = Math.floor(slotIndex / 50);
-    const localIndex = slotIndex % 50;
-    const row = Math.floor(localIndex / cols);
-    const col = localIndex % cols;
+    const row = Math.floor(slotIndex / cols);
+    const col = slotIndex % cols;
+    const x = startX + col * (cellW + gap) + cellW / 2;
+    const y = padding + row * (cellH + gap) + cellH / 2;
+    return { x, y, cols };
+  }
 
-    // 칸의 중심 좌표
-    const x = padding + col * (cellW + gap) + cellW / 2;
-    const y = section * areaHeight + padding + row * (cellH + gap) + cellH / 2;
+  // 현재 화면 기준 한 줄에 들어가는 칸 개수
+  function getColsPerRow() {
+    const scrollArea = document.getElementById('memosScrollArea');
+    if (!scrollArea) return 10;
+    const areaWidth = scrollArea.clientWidth;
+    const padding = 15;
+    const gap = 8;
+    const cellW = 90;
+    return Math.max(1, Math.floor((areaWidth - padding * 2 + gap) / (cellW + gap)));
+  }
 
-    return { x, y, cellW, cellH };
+  // 화면 크기 변경 시 그리드 재배치 (메모는 슬롯 안에 있으므로 자동 따라옴)
+  function repositionMemosBySlotIndex() {
+    renderSlots();
   }
 
   function addMemoToSlot(slotIndex, memo) {
-    const pos = slotIndexToPosition(slotIndex);
     const memoWithSlot = { ...memo, slotIndex: slotIndex };
-    addMemoToWall(pos.x, pos.y, memoWithSlot, false, false);
+    // 좌표는 더 이상 사용 안 함 - 슬롯이 위치를 결정
+    addMemoToWall(0, 0, memoWithSlot, false, false);
   }
 
   function moveMemoToSlot(memoEl, newSlotIndex) {
-    const pos = slotIndexToPosition(newSlotIndex);
-    memoEl.style.left = pos.x + 'px';
-    memoEl.style.top = pos.y + 'px';
-    memoEl._memoData.x = pos.x;
-    memoEl._memoData.y = pos.y;
+    const zone = document.getElementById('placeZone');
+    const oldSlotIndex = memoEl._memoData.slotIndex;
+
+    // 이전 슬롯을 빈 상태로
+    if (oldSlotIndex !== undefined && oldSlotIndex !== null) {
+      const oldSlot = zone.querySelector(`.slot[data-slot-index="${oldSlotIndex}"]`);
+      if (oldSlot) oldSlot.classList.remove('occupied');
+    }
+
+    // 새 슬롯에 메모 옮기기
+    const newSlot = zone.querySelector(`.slot[data-slot-index="${newSlotIndex}"]`);
+    if (newSlot) {
+      newSlot.appendChild(memoEl);
+      newSlot.classList.add('occupied');
+    }
+
     memoEl._memoData.slotIndex = newSlotIndex;
     markUnsaved();
   }
@@ -2281,6 +2326,11 @@
   }
 
   function deleteMemo(memoEl) {
+    // 부모 슬롯을 빈 상태로 되돌리기
+    const parentSlot = memoEl.parentElement;
+    if (parentSlot && parentSlot.classList.contains('slot')) {
+      parentSlot.classList.remove('occupied');
+    }
     memoEl.remove();
     memoCount = document.querySelectorAll('.placed-memo').length;
     document.getElementById('messageCount').textContent = memoCount + '건의 마음';
@@ -2297,20 +2347,22 @@
   });
 
   function addMemoToWall(x, y, memo, skipExpand = false, isAlreadySaved = false) {
-    const inner = document.getElementById('memosInner');
+    const zone = document.getElementById('placeZone');
     const memoEl = document.createElement('div');
     memoEl.className = 'placed-memo';
     if (!isAlreadySaved) memoEl.classList.add('unsaved');
 
-    memoEl.style.left = x + 'px';
-    memoEl.style.top = y + 'px';
+    // docId 설정 (저장된 메모는 Firestore docId 보유)
+    if (memo.docId) {
+      memoEl.dataset.docId = memo.docId;
+    }
 
     const rot = (memo.rotation !== undefined)
       ? memo.rotation
       : (Math.random() * 12 - 6).toFixed(1);
     memoEl.style.setProperty('--rot', rot + 'deg');
 
-    // 메모 데이터
+    // 메모 데이터 (위치는 슬롯이 결정하므로 x,y는 더 이상 신뢰하지 않음)
     memoEl._memoData = {
       paperColor: memo.paperColor,
       imageData: memo.imageData,
@@ -2319,10 +2371,9 @@
       originalHeight: memo.originalHeight,
       sourceType: memo.sourceType,
       message: memo.message || '',
-      x: x,
-      y: y,
       rotation: rot,
       slotIndex: memo.slotIndex,
+      docId: memo.docId,
       saved: isAlreadySaved
     };
 
@@ -2347,7 +2398,6 @@
       if (placementMode) return;
       e.stopPropagation();
 
-      // 액션 버튼 클릭 처리
       const actionBtn = e.target.closest('.memo-action-btn');
       if (actionBtn) {
         const action = actionBtn.dataset.action;
@@ -2359,8 +2409,6 @@
         return;
       }
 
-      // 저장된 메모: 라이트박스 열기
-      // 미저장 메모: 액션 메뉴 토글
       if (memoEl._memoData.saved) {
         openLightbox(memoEl._memoData);
       } else {
@@ -2368,18 +2416,34 @@
       }
     });
 
-    inner.appendChild(memoEl);
+    // 메모를 슬롯 안에 직접 넣기
+    const slotIndex = memo.slotIndex;
+    if (slotIndex !== undefined && slotIndex !== null) {
+      // 슬롯이 없으면 먼저 그리드 확장
+      let targetSlot = zone.querySelector(`.slot[data-slot-index="${slotIndex}"]`);
+      if (!targetSlot) {
+        renderSlots();
+        targetSlot = zone.querySelector(`.slot[data-slot-index="${slotIndex}"]`);
+      }
+      if (targetSlot) {
+        // 슬롯에 이미 메모가 들어있으면 중복 방지를 위해 추가하지 않음
+        const existingMemo = targetSlot.querySelector('.placed-memo');
+        if (existingMemo) {
+          console.warn(`슬롯 ${slotIndex}에 이미 메모가 있어 중복 추가를 건너뜁니다.`);
+          return;
+        }
+        targetSlot.appendChild(memoEl);
+        targetSlot.classList.add('occupied');
+      }
+    }
 
-    memoCount = inner.querySelectorAll('.placed-memo').length;
+    memoCount = document.querySelectorAll('.placed-memo').length;
     document.getElementById('messageCount').textContent = memoCount + '건의 마음';
 
     if (!isAlreadySaved) {
       markUnsaved();
     }
 
-    if (!skipExpand) {
-      expandScrollAreaIfNeeded();
-    }
     updateScrollHint();
   }
 
@@ -2497,8 +2561,6 @@
           originalHeight: data.originalHeight || 0,
           sourceType: data.sourceType || 'draw',
           message: data.message || '',
-          x: data.x,
-          y: data.y,
           rotation: data.rotation,
           slotIndex: data.slotIndex,
           createdAt: serverTimestamp()
@@ -2511,6 +2573,9 @@
         el.classList.remove('show-actions');
         el._memoData.saved = true;
         el._memoData.docId = docRef.id;
+        el.dataset.docId = docRef.id;
+        // 중복 그리기 방지: Firestore 리스너가 이 메모를 다시 받아도 무시되도록
+        loadedDocIds.add(docRef.id);
         // 액션 메뉴 DOM 제거
         const actions = el.querySelector('.memo-actions');
         if (actions) actions.remove();
@@ -2565,7 +2630,14 @@
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added') {
             const docId = change.doc.id;
+            // 중복 방지 1: 이미 로드된 docId면 무시
             if (loadedDocIds.has(docId)) return;
+            // 중복 방지 2: DOM에 같은 docId의 메모가 이미 있으면 무시
+            const exists = document.querySelector(`.placed-memo[data-doc-id="${docId}"]`);
+            if (exists) {
+              loadedDocIds.add(docId);
+              return;
+            }
             loadedDocIds.add(docId);
 
             const data = change.doc.data();
@@ -2575,20 +2647,28 @@
 
         if (newMemos.length === 0) return;
 
-        // 영역 높이 필요한 만큼 확장
+        // 슬롯 인덱스 기준으로 영역 높이 확장 (가장 큰 인덱스 + 여유분)
         const scrollArea = document.getElementById('memosScrollArea');
         const inner = document.getElementById('memosInner');
-        const totalCount = loadedDocIds.size;
-        const sectionHeight = scrollArea.clientHeight;
-        const neededSections = Math.floor(totalCount / MEMOS_PER_SECTION) + 1;
-        const newMin = sectionHeight * neededSections;
-        if (newMin > inner.offsetHeight) {
-          inner.style.minHeight = newMin + 'px';
+        const allSlotIndices = newMemos.map(m => m.slotIndex || 0);
+        const maxSlot = Math.max(...allSlotIndices, 0);
+        const cols = getColsPerRow();
+        const rowsNeeded = Math.floor(maxSlot / cols) + 3; // 여유 3줄
+        const padding = 15;
+        const gap = 8;
+        const cellH = 70;
+        const neededHeight = padding * 2 + rowsNeeded * cellH + (rowsNeeded - 1) * gap;
+        const minHeight = Math.max(neededHeight, scrollArea.clientHeight);
+        if (minHeight > inner.offsetHeight) {
+          inner.style.minHeight = minHeight + 'px';
         }
 
-        // 새 메모들 그리기 (모두 saved 상태)
+        // 슬롯이 충분히 만들어지도록 그리드 먼저 렌더링
+        renderSlots();
+
+        // 새 메모들을 슬롯 안에 직접 넣기
         newMemos.forEach(memo => {
-          addMemoToWall(memo.x, memo.y, memo, true, true);
+          addMemoToWall(0, 0, memo, true, true);
         });
 
         updateSaveButtonState(loadedDocIds.size);
@@ -2678,8 +2758,11 @@
   }
 
   function updateScrollHint() {
-    const scrollArea = document.getElementById('memosScrollArea');
+    // 스크롤 힌트 제거됨 - 호환을 위해 빈 함수로 유지
     const hint = document.getElementById('scrollHintDown');
+    if (!hint) return;
+    const scrollArea = document.getElementById('memosScrollArea');
+    if (!scrollArea) return;
     const hasMoreBelow = (scrollArea.scrollHeight - scrollArea.scrollTop - scrollArea.clientHeight) > 20;
     hint.classList.toggle('show', hasMoreBelow);
   }
@@ -2689,7 +2772,10 @@
     if (scrollArea) {
       scrollArea.addEventListener('scroll', updateScrollHint);
     }
-    window.addEventListener('resize', updateScrollHint);
+    window.addEventListener('resize', () => {
+      updateScrollHint();
+      repositionMemosBySlotIndex();
+    });
 
     // 영상 미리 로딩 시작 (사용자가 입장하기 누를 때 즉시 재생 가능하도록)
     const video = document.getElementById('introVideo');
