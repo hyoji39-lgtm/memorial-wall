@@ -488,38 +488,95 @@
   .toast.error { background: rgba(180, 50, 60, 0.95); }
   .toast.success { background: rgba(50, 140, 80, 0.95); }
 
-  /* ============ 벽에 붙이기 모드 ============ */
-  /* place-zone은 .memos-inner 위에 절대배치되어 클릭만 받음 */
+  /* ============ 벽에 붙이기 모드: 그리드 칸 시스템 ============ */
+  /* 평소엔 안 보임, placement 모드일 때만 빈 칸들이 표시됨 */
   .place-zone {
     position: absolute;
     inset: 0;
     z-index: 6;
     display: none;
-    cursor: none;
   }
 
   .place-zone.active {
-    display: block;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 12px;
+    padding: 20px;
+  }
+
+  /* 빈 칸 (배치 가능) */
+  .slot {
+    position: relative;
+    border: 1.5px dashed rgba(120, 130, 145, 0.35);
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slot:hover {
+    border-color: rgba(176, 136, 56, 0.7);
+    background: rgba(255, 244, 215, 0.12);
+    box-shadow: inset 0 0 0 2px rgba(176, 136, 56, 0.2);
+  }
+
+  /* 이미 메모가 있는 칸 (배치 불가) */
+  .slot.occupied {
+    border-color: transparent;
+    background: transparent;
+    cursor: not-allowed;
+  }
+
+  .slot.occupied:hover {
+    box-shadow: none;
+    background: transparent;
+  }
+
+  /* 칸 안의 + 아이콘 (빈 칸 표시) */
+  .slot::after {
+    content: '+';
+    color: rgba(120, 130, 145, 0.4);
+    font-size: 1.5rem;
+    font-weight: 300;
+    transition: color 0.2s;
+  }
+
+  .slot:hover::after {
+    color: rgba(176, 136, 56, 0.7);
+  }
+
+  .slot.occupied::after {
+    display: none;
   }
 
   /* 안내 메시지 */
   .place-hint {
     position: absolute;
-    top: -3rem;
+    top: 26%;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(40, 50, 60, 0.85);
+    background: rgba(40, 50, 60, 0.9);
     color: #fff;
-    padding: 0.65rem 1.4rem;
+    padding: 0.55rem 1.3rem;
     border-radius: 30px;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     letter-spacing: 0.02em;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
     white-space: nowrap;
     pointer-events: none;
+    z-index: 10;
+    display: none;
     animation: hintBob 2s ease-in-out infinite;
+  }
+
+  .place-hint.show {
+    display: block;
   }
 
   @keyframes hintBob {
@@ -566,6 +623,89 @@
     box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.08);
     overflow: hidden;
     cursor: pointer;
+  }
+
+  /* 미저장 상태 메모 - 살짝 강조 */
+  .placed-memo.unsaved {
+    animation: memoStick 0.4s ease-out, unsavedPulse 2.5s ease-in-out infinite 0.4s;
+  }
+
+  @keyframes unsavedPulse {
+    0%, 100% {
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 0 rgba(176, 136, 56, 0));
+    }
+    50% {
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 8px rgba(176, 136, 56, 0.6));
+    }
+  }
+
+  /* 미저장 메모 위에 작은 "수정" 표시 */
+  .placed-memo.unsaved::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 12px;
+    height: 12px;
+    background: #d4a84a;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    z-index: 5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 미저장 메모 액션 메뉴 (위치 수정 / 삭제) */
+  .memo-actions {
+    position: absolute;
+    top: -42px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: 4px;
+    background: rgba(40, 50, 65, 0.92);
+    padding: 5px 6px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    white-space: nowrap;
+  }
+
+  .placed-memo.unsaved.show-actions .memo-actions {
+    display: flex;
+  }
+
+  .memo-action-btn {
+    background: transparent;
+    color: #fff;
+    border: none;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+
+  .memo-action-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .memo-action-btn.delete {
+    color: #ff8080;
+  }
+
+  /* 액션 메뉴 화살표 */
+  .memo-actions::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 8px;
+    height: 8px;
+    background: rgba(40, 50, 65, 0.92);
   }
 
   .placed-memo {
@@ -717,7 +857,7 @@
   /* 메모 레이어 - 세로로 늘어나면서 스크롤 가능 */
   .memos-scroll-area {
     position: absolute;
-    top: 26%;
+    top: 30%;
     left: 2%;
     right: 2%;
     bottom: 22%;
@@ -1257,13 +1397,14 @@
       <!-- 메모지가 누적되어 붙는 스크롤 영역 -->
       <div class="memos-scroll-area" id="memosScrollArea">
         <div class="memos-inner" id="memosInner">
-          <!-- 배치 모드용 클릭 캐쳐 (영역 전체) -->
-          <div class="place-zone" id="placeZone">
-            <div class="place-hint">📌 원하는 위치를 클릭해서 붙여주세요</div>
-          </div>
+          <!-- 그리드 칸들이 자바스크립트로 동적 생성됨 (placement 모드에서만 보임) -->
+          <div class="place-zone" id="placeZone"></div>
           <!-- 붙은 메모지들이 이 안에 추가됨 -->
         </div>
       </div>
+
+      <!-- 배치 모드 안내 (그리드 위에 떠있음) -->
+      <div class="place-hint" id="placeHint">📌 원하는 칸을 클릭해서 붙여주세요</div>
 
       <!-- 아래로 더 있다는 힌트 -->
       <div class="scroll-hint-down" id="scrollHintDown">
@@ -1295,12 +1436,6 @@
     </div>
     <div class="lightbox-message" id="lightboxMessage" style="display: none;"></div>
   </div>
-</div>
-
-<!-- 커서 따라다니는 메모지 미리보기 -->
-<div id="cursorPreview" class="cursor-preview" style="width: 80px;">
-  <div class="memo-pin"></div>
-  <div class="memo-paper" id="cursorPaper"></div>
 </div>
 
 <!-- ============ 3. 마음 남기기 모달 ============ -->
@@ -1394,7 +1529,36 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+  // ============ Firebase 초기화 ============
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    onSnapshot,
+    serverTimestamp,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDYKCrC5Q0TQFBSav9BdHrqTB2HxitsdIM",
+    authDomain: "art-bonbon-memorial.firebaseapp.com",
+    projectId: "art-bonbon-memorial",
+    storageBucket: "art-bonbon-memorial.firebasestorage.app",
+    messagingSenderId: "1024638799056",
+    appId: "1:1024638799056:web:89a3eb200a555dcdc022d5"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
+  const memosCol = collection(db, 'memos');
+
+  // 전역에서 접근 가능하도록
+  window._fb = { db, memosCol, addDoc, getDocs, onSnapshot, serverTimestamp, query, orderBy };
+
   // ============ 페이지 전환 ============
   let isTransitioning = false;
   let endedHandler = null;
@@ -1949,116 +2113,204 @@
   function enterPlacementMode() {
     placementMode = true;
     const zone = document.getElementById('placeZone');
+    const hint = document.getElementById('placeHint');
+
+    // 그리드 칸 생성 (메모 영역의 보이는 부분에 50칸)
+    renderSlots();
+
     zone.classList.add('active');
+    if (hint) {
+      hint.textContent = '📌 원하는 칸을 클릭해서 붙여주세요';
+      hint.classList.add('show');
+    }
 
-    const cursorPaper = document.getElementById('cursorPaper');
-    cursorPaper.style.background = pendingMemo.paperColor;
-    cursorPaper.innerHTML = `<img src="${pendingMemo.imageData}">`;
-
-    document.addEventListener('mousemove', followCursor);
-    document.addEventListener('touchmove', followCursorTouch, { passive: false });
-    zone.addEventListener('click', placeMemo);
-    zone.addEventListener('touchend', placeMemoTouch);
+    // 빈 칸 클릭 이벤트 등록
+    zone.addEventListener('click', handleSlotClick);
     document.addEventListener('keydown', cancelOnEsc);
   }
 
   function exitPlacementMode() {
     placementMode = false;
     const zone = document.getElementById('placeZone');
-    zone.classList.remove('active');
-    document.getElementById('cursorPreview').classList.remove('show');
+    const hint = document.getElementById('placeHint');
 
-    document.removeEventListener('mousemove', followCursor);
-    document.removeEventListener('touchmove', followCursorTouch);
-    zone.removeEventListener('click', placeMemo);
-    zone.removeEventListener('touchend', placeMemoTouch);
+    zone.classList.remove('active');
+    zone.innerHTML = ''; // 그리드 칸 제거
+    if (hint) hint.classList.remove('show');
+
+    zone.removeEventListener('click', handleSlotClick);
     document.removeEventListener('keydown', cancelOnEsc);
 
-    pendingMemo = null;
+    // 위치 수정 모드 종료
+    editingMemoEl = null;
   }
 
-  function followCursor(e) {
-    if (!placementMode) return;
-    const preview = document.getElementById('cursorPreview');
-    preview.style.left = e.clientX + 'px';
-    preview.style.top = e.clientY + 'px';
-
+  // 그리드 칸 렌더링 (스크롤 영역 전체에 칸 깔기)
+  function renderSlots() {
+    const zone = document.getElementById('placeZone');
     const scrollArea = document.getElementById('memosScrollArea');
-    const rect = scrollArea.getBoundingClientRect();
-    const inside = e.clientX >= rect.left && e.clientX <= rect.right &&
-                   e.clientY >= rect.top && e.clientY <= rect.bottom;
-    preview.classList.toggle('show', inside);
-  }
-
-  function followCursorTouch(e) {
-    if (!placementMode) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const preview = document.getElementById('cursorPreview');
-    preview.style.left = touch.clientX + 'px';
-    preview.style.top = touch.clientY + 'px';
-    preview.classList.add('show');
-  }
-
-  function placeMemo(e) {
-    if (!placementMode || !pendingMemo) return;
     const inner = document.getElementById('memosInner');
-    const scrollArea = document.getElementById('memosScrollArea');
-    const rect = inner.getBoundingClientRect();
-    // 클릭 좌표를 .memos-inner 기준 + 스크롤 오프셋 포함
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    if (x < 0 || y < 0 || x > rect.width) return;
 
-    addMemoToWall(x, y, pendingMemo);
-    exitPlacementMode();
+    if (!zone || !scrollArea || !inner) return;
+
+    // 이미 사용 중인 칸 인덱스 수집
+    const occupiedIndices = new Set();
+    document.querySelectorAll('.placed-memo').forEach(el => {
+      if (el._memoData && el._memoData.slotIndex !== undefined) {
+        // 수정 중인 메모는 자기 칸을 비워둠 (다른 곳으로 이동 가능)
+        if (el !== editingMemoEl) {
+          occupiedIndices.add(el._memoData.slotIndex);
+        }
+      }
+    });
+
+    // 필요한 섹션 수 계산
+    // - 현재 영역 높이 기준 + 사용 중인 가장 큰 칸 인덱스 + 여유분
+    const areaHeight = scrollArea.clientHeight;
+    const maxUsedIndex = occupiedIndices.size > 0 ? Math.max(...occupiedIndices) : -1;
+    const sectionsByUsed = Math.floor(maxUsedIndex / 50) + 1; // 사용 중인 칸 기준
+    const sectionsByHeight = Math.ceil(inner.offsetHeight / areaHeight); // 영역 높이 기준
+    // 둘 중 큰 값 + 1 (항상 한 섹션 여유)
+    const sections = Math.max(sectionsByUsed, sectionsByHeight) + 1;
+
+    // 영역 높이도 같이 확장
+    const newMinHeight = sections * areaHeight;
+    if (newMinHeight > inner.offsetHeight) {
+      inner.style.minHeight = newMinHeight + 'px';
+    }
+
+    zone.style.height = newMinHeight + 'px';
+    zone.style.gridTemplateRows = `repeat(${sections * 5}, 1fr)`;
+
+    const totalSlots = sections * 50;
+    zone.innerHTML = '';
+
+    for (let i = 0; i < totalSlots; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.dataset.slotIndex = i;
+      if (occupiedIndices.has(i)) {
+        slot.classList.add('occupied');
+      }
+      zone.appendChild(slot);
+    }
   }
 
-  function placeMemoTouch(e) {
-    if (!placementMode || !pendingMemo) return;
-    const touch = e.changedTouches[0];
-    const inner = document.getElementById('memosInner');
-    const rect = inner.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    if (x < 0 || y < 0 || x > rect.width) return;
+  function handleSlotClick(e) {
+    const slot = e.target.closest('.slot');
+    if (!slot || slot.classList.contains('occupied')) return;
 
-    addMemoToWall(x, y, pendingMemo);
-    exitPlacementMode();
+    const slotIndex = parseInt(slot.dataset.slotIndex);
+
+    if (editingMemoEl) {
+      // 위치 수정 모드: 기존 메모를 새 칸으로 이동
+      moveMemoToSlot(editingMemoEl, slotIndex);
+      editingMemoEl = null;
+      exitPlacementMode();
+    } else if (pendingMemo) {
+      // 새 메모 배치
+      addMemoToSlot(slotIndex, pendingMemo);
+      exitPlacementMode();
+    }
   }
 
   function cancelOnEsc(e) {
-    if (e.key === 'Escape') exitPlacementMode();
+    if (e.key === 'Escape') {
+      editingMemoEl = null;
+      exitPlacementMode();
+    }
   }
 
-  function addMemoToWall(x, y, memo, skipExpand = false) {
+  // 슬롯 인덱스 → 화면상 위치(px) 계산
+  function slotIndexToPosition(slotIndex) {
+    const scrollArea = document.getElementById('memosScrollArea');
+    const areaWidth = scrollArea.clientWidth;
+    const areaHeight = scrollArea.clientHeight;
+    const padding = 20;
+    const gap = 12;
+    const cols = 10;
+    const rows = 5;
+    const cellW = (areaWidth - padding * 2 - gap * (cols - 1)) / cols;
+    const cellH = (areaHeight - padding * 2 - gap * (rows - 1)) / rows;
+
+    const section = Math.floor(slotIndex / 50);
+    const localIndex = slotIndex % 50;
+    const row = Math.floor(localIndex / cols);
+    const col = localIndex % cols;
+
+    // 칸의 중심 좌표
+    const x = padding + col * (cellW + gap) + cellW / 2;
+    const y = section * areaHeight + padding + row * (cellH + gap) + cellH / 2;
+
+    return { x, y, cellW, cellH };
+  }
+
+  function addMemoToSlot(slotIndex, memo) {
+    const pos = slotIndexToPosition(slotIndex);
+    const memoWithSlot = { ...memo, slotIndex: slotIndex };
+    addMemoToWall(pos.x, pos.y, memoWithSlot, false, false);
+  }
+
+  function moveMemoToSlot(memoEl, newSlotIndex) {
+    const pos = slotIndexToPosition(newSlotIndex);
+    memoEl.style.left = pos.x + 'px';
+    memoEl.style.top = pos.y + 'px';
+    memoEl._memoData.x = pos.x;
+    memoEl._memoData.y = pos.y;
+    memoEl._memoData.slotIndex = newSlotIndex;
+    markUnsaved();
+  }
+
+  let editingMemoEl = null;
+
+  // 미저장 메모 클릭 → 액션 메뉴 표시
+  function showMemoActions(memoEl) {
+    // 다른 모든 메모의 액션 숨김
+    document.querySelectorAll('.placed-memo.show-actions').forEach(el => {
+      if (el !== memoEl) el.classList.remove('show-actions');
+    });
+    memoEl.classList.toggle('show-actions');
+  }
+
+  function startEditPosition(memoEl) {
+    editingMemoEl = memoEl;
+    memoEl.classList.remove('show-actions');
+    enterPlacementMode();
+    const hint = document.getElementById('placeHint');
+    if (hint) hint.textContent = '📌 새 위치를 선택해주세요';
+  }
+
+  function deleteMemo(memoEl) {
+    memoEl.remove();
+    memoCount = document.querySelectorAll('.placed-memo').length;
+    document.getElementById('messageCount').textContent = memoCount + '건의 마음';
+    markUnsaved();
+  }
+
+  // 외부 클릭 시 액션 메뉴 닫기
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.placed-memo') && !e.target.closest('.memo-actions')) {
+      document.querySelectorAll('.placed-memo.show-actions').forEach(el => {
+        el.classList.remove('show-actions');
+      });
+    }
+  });
+
+  function addMemoToWall(x, y, memo, skipExpand = false, isAlreadySaved = false) {
     const inner = document.getElementById('memosInner');
     const memoEl = document.createElement('div');
     memoEl.className = 'placed-memo';
+    if (!isAlreadySaved) memoEl.classList.add('unsaved');
 
-    let finalX, finalY;
-
-    if (memo.x !== undefined && memo.y !== undefined) {
-      // 로드된 메모: 저장된 절대 px 좌표 그대로
-      finalX = memo.x;
-      finalY = memo.y;
-    } else {
-      // 새 메모: 클램프해서 영역 밖으로 안 나가게
-      const innerWidth = inner.clientWidth;
-      const MEMO_HALF = 50; // 메모 크기 80px / 2 + 핀과 여유
-      finalX = Math.max(MEMO_HALF, Math.min(innerWidth - MEMO_HALF, x));
-      finalY = Math.max(MEMO_HALF * 0.7, y);
-    }
-
-    memoEl.style.left = finalX + 'px';
-    memoEl.style.top = finalY + 'px';
+    memoEl.style.left = x + 'px';
+    memoEl.style.top = y + 'px';
 
     const rot = (memo.rotation !== undefined)
       ? memo.rotation
       : (Math.random() * 12 - 6).toFixed(1);
     memoEl.style.setProperty('--rot', rot + 'deg');
 
-    // 메모 데이터 (절대 px 좌표 기반)
+    // 메모 데이터
     memoEl._memoData = {
       paperColor: memo.paperColor,
       imageData: memo.imageData,
@@ -2067,33 +2319,63 @@
       originalHeight: memo.originalHeight,
       sourceType: memo.sourceType,
       message: memo.message || '',
-      x: finalX,
-      y: finalY,
-      rotation: rot
+      x: x,
+      y: y,
+      rotation: rot,
+      slotIndex: memo.slotIndex,
+      saved: isAlreadySaved
     };
 
+    // HTML: 미저장이면 액션 메뉴 포함
+    const actionsHTML = isAlreadySaved ? '' : `
+      <div class="memo-actions">
+        <button class="memo-action-btn" data-action="edit">위치 수정</button>
+        <button class="memo-action-btn delete" data-action="delete">삭제</button>
+      </div>
+    `;
+
     memoEl.innerHTML = `
+      ${actionsHTML}
       <div class="memo-pin"></div>
       <div class="memo-paper" style="background: ${memo.paperColor};">
         <img src="${memo.imageData}" alt="memo">
       </div>
     `;
 
-    // 클릭으로 라이트박스 열기 (배치 모드 중에는 무시)
+    // 클릭 이벤트
     memoEl.addEventListener('click', function(e) {
       if (placementMode) return;
       e.stopPropagation();
-      openLightbox(memoEl._memoData);
+
+      // 액션 버튼 클릭 처리
+      const actionBtn = e.target.closest('.memo-action-btn');
+      if (actionBtn) {
+        const action = actionBtn.dataset.action;
+        if (action === 'edit') {
+          startEditPosition(memoEl);
+        } else if (action === 'delete') {
+          deleteMemo(memoEl);
+        }
+        return;
+      }
+
+      // 저장된 메모: 라이트박스 열기
+      // 미저장 메모: 액션 메뉴 토글
+      if (memoEl._memoData.saved) {
+        openLightbox(memoEl._memoData);
+      } else {
+        showMemoActions(memoEl);
+      }
     });
 
     inner.appendChild(memoEl);
 
-    // 카운트 갱신
     memoCount = inner.querySelectorAll('.placed-memo').length;
     document.getElementById('messageCount').textContent = memoCount + '건의 마음';
 
-    // 저장 상태 표시 갱신 (저장되지 않은 변경이 있음을 표시)
-    markUnsaved();
+    if (!isAlreadySaved) {
+      markUnsaved();
+    }
 
     if (!skipExpand) {
       expandScrollAreaIfNeeded();
@@ -2148,75 +2430,22 @@
     }
   });
 
-  // ============ 저장소 (IndexedDB + localStorage 폴백) ============
-  const DB_NAME = 'artbonbon_memorial_v4';
-  const OLD_DB_NAMES = ['artbonbon_memorial', 'artbonbon_memorial_v2', 'artbonbon_memorial_v3'];
-  const DB_VERSION = 1;
-  const STORE_NAME = 'memos';
-  const SINGLE_KEY = 'all_memos';
-
-  // 이전 localStorage 데이터 모두 정리
+  // ============ 이전 로컬 데이터 정리 (이제 Firebase 사용) ============
+  // 이전 버전에서 IndexedDB / localStorage에 저장된 데이터 모두 청소
   ['artbonbon_memorial_memos_v1', 'artbonbon_memorial_memos_v2',
    'artbonbon_memorial_memos_v3', 'artbonbon_memorial_memos_v4',
    'artbonbon_memorial_memos_v5', 'artbonbon_memorial_memos_main'].forEach(key => {
     try { localStorage.removeItem(key); } catch (e) {}
   });
 
-  // 이전 IndexedDB 데이터베이스 완전 삭제
+  const OLD_DB_NAMES = ['artbonbon_memorial', 'artbonbon_memorial_v2',
+                         'artbonbon_memorial_v3', 'artbonbon_memorial_v4',
+                         'artbonbon_memorial_v5'];
   OLD_DB_NAMES.forEach(name => {
     try {
-      const req = indexedDB.deleteDatabase(name);
-      req.onsuccess = () => console.log(`이전 DB(${name}) 삭제 완료`);
-      req.onerror = () => console.warn(`이전 DB(${name}) 삭제 실패`);
-    } catch (e) {
-      console.warn(e);
-    }
+      indexedDB.deleteDatabase(name);
+    } catch (e) {}
   });
-
-  // IndexedDB 열기
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      if (!window.indexedDB) {
-        reject(new Error('IndexedDB 미지원'));
-        return;
-      }
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => resolve(req.result);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      };
-    });
-  }
-
-  // IndexedDB에 메모 배열 저장
-  async function saveToIndexedDB(memos) {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.put(memos, SINGLE_KEY);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-    });
-  }
-
-  // IndexedDB에서 메모 배열 로드
-  async function loadFromIndexedDB() {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(SINGLE_KEY);
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-    });
-  }
 
   // ============ 명시적 저장 ============
   let hasUnsavedChanges = false;
@@ -2236,109 +2465,144 @@
     const fabText = document.getElementById('saveFabText');
     if (!fab) return;
 
+    // 미저장 메모만 수집 (이미 Firestore에 있는 메모는 다시 안 올림)
+    const unsavedEls = Array.from(document.querySelectorAll('.placed-memo.unsaved'));
+
+    if (unsavedEls.length === 0) {
+      showToast('저장할 새 메모가 없습니다', '');
+      return;
+    }
+
     fab.classList.add('saving');
     fab.classList.remove('success');
     fabText.textContent = '저장 중...';
 
-    // 현재 화면의 모든 메모 수집
-    const memos = [];
-    document.querySelectorAll('.placed-memo').forEach(el => {
-      if (el._memoData) memos.push(el._memoData);
-    });
+    const { memosCol, addDoc, serverTimestamp } = window._fb;
 
-    let saved = false;
-    let errorMsg = '';
+    let successCount = 0;
+    let failCount = 0;
+    const failedEls = [];
 
-    // 1. IndexedDB 시도 (용량 제한이 거의 없음)
-    try {
-      await saveToIndexedDB(memos);
-      saved = true;
-    } catch (err) {
-      console.warn('IndexedDB 저장 실패, localStorage로 폴백:', err);
-      errorMsg = err.message || '';
+    // 각 메모를 Firestore에 하나씩 업로드
+    for (const el of unsavedEls) {
+      const data = el._memoData;
+      if (!data) continue;
 
-      // 2. localStorage 폴백
       try {
-        localStorage.setItem('artbonbon_memorial_memos_main', JSON.stringify(memos));
-        saved = true;
-      } catch (err2) {
-        console.error('localStorage 저장도 실패:', err2);
-        errorMsg = '저장 공간 부족';
+        const docData = {
+          paperColor: data.paperColor || '#fff4a3',
+          imageData: data.imageData || '',
+          originalData: data.originalData || data.imageData || '',
+          originalWidth: data.originalWidth || 0,
+          originalHeight: data.originalHeight || 0,
+          sourceType: data.sourceType || 'draw',
+          message: data.message || '',
+          x: data.x,
+          y: data.y,
+          rotation: data.rotation,
+          slotIndex: data.slotIndex,
+          createdAt: serverTimestamp()
+        };
+
+        const docRef = await addDoc(memosCol, docData);
+
+        // 저장 성공한 메모는 saved 상태로 전환
+        el.classList.remove('unsaved');
+        el.classList.remove('show-actions');
+        el._memoData.saved = true;
+        el._memoData.docId = docRef.id;
+        // 액션 메뉴 DOM 제거
+        const actions = el.querySelector('.memo-actions');
+        if (actions) actions.remove();
+
+        successCount++;
+      } catch (err) {
+        console.error('메모 저장 실패:', err);
+        failCount++;
+        failedEls.push(el);
       }
     }
 
     fab.classList.remove('saving');
 
-    if (saved) {
+    if (failCount === 0) {
       fab.classList.add('success');
       fabText.textContent = '저장 완료';
       hasUnsavedChanges = false;
-      showToast(`✓ ${memos.length}개의 메모가 저장되었습니다`, 'success');
+      showToast(`✓ ${successCount}개의 메모가 모두에게 공유되었습니다`, 'success');
 
       setTimeout(() => {
         if (!hasUnsavedChanges) {
           fab.classList.remove('success');
           fabText.textContent = '저장됨';
         }
-      }, 2000);
+      }, 2500);
     } else {
-      fabText.textContent = '저장 실패';
-      showToast(`✗ 저장 실패: ${errorMsg}`, 'error');
-      setTimeout(() => { fabText.textContent = '저장하기'; }, 2000);
+      fabText.textContent = '일부 실패';
+      showToast(`${successCount}개 저장 완료, ${failCount}개 실패`, 'error');
+      setTimeout(() => { fabText.textContent = '다시 저장하기'; }, 2500);
     }
   }
 
-  // ============ 메모 로드 ============
+  // ============ 메모 로드 (Firestore에서 모든 사람 메모 불러오기) ============
   let memosLoaded = false;
+  const loadedDocIds = new Set(); // 중복 추가 방지
 
   async function loadMemos() {
     if (memosLoaded) return;
     memosLoaded = true;
 
-    let memos = [];
-
-    // 1. IndexedDB에서 시도
-    try {
-      memos = await loadFromIndexedDB();
-    } catch (err) {
-      console.warn('IndexedDB 로드 실패, localStorage 시도:', err);
-      // 2. localStorage 폴백
-      try {
-        const raw = localStorage.getItem('artbonbon_memorial_memos_main');
-        if (raw) memos = JSON.parse(raw);
-      } catch (err2) {
-        console.error('localStorage 로드도 실패:', err2);
-      }
-    }
-
-    if (!Array.isArray(memos) || memos.length === 0) {
-      updateSaveButtonState(0);
-      return;
-    }
-
     // 영역이 렌더링될 때까지 기다림
     await waitForLayout();
 
-    const scrollArea = document.getElementById('memosScrollArea');
-    const inner = document.getElementById('memosInner');
+    const { memosCol, onSnapshot, query, orderBy } = window._fb;
 
-    // 메모 개수에 맞게 영역 높이 먼저 확장
-    const sectionHeight = scrollArea.clientHeight;
-    const neededSections = Math.floor(memos.length / MEMOS_PER_SECTION) + 1;
-    inner.style.minHeight = (sectionHeight * neededSections) + 'px';
+    try {
+      // Firestore 실시간 리스너: 메모 추가/변경 시 즉시 화면 반영
+      const q = query(memosCol, orderBy('createdAt', 'asc'));
+      onSnapshot(q, (snapshot) => {
+        const newMemos = [];
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const docId = change.doc.id;
+            if (loadedDocIds.has(docId)) return;
+            loadedDocIds.add(docId);
 
-    // 모든 메모 그리기
-    memos.forEach(memo => {
-      addMemoToWall(memo.x, memo.y, memo, true);
-    });
+            const data = change.doc.data();
+            newMemos.push({ ...data, docId });
+          }
+        });
 
-    // 로드 후엔 unsaved 상태가 아님
+        if (newMemos.length === 0) return;
+
+        // 영역 높이 필요한 만큼 확장
+        const scrollArea = document.getElementById('memosScrollArea');
+        const inner = document.getElementById('memosInner');
+        const totalCount = loadedDocIds.size;
+        const sectionHeight = scrollArea.clientHeight;
+        const neededSections = Math.floor(totalCount / MEMOS_PER_SECTION) + 1;
+        const newMin = sectionHeight * neededSections;
+        if (newMin > inner.offsetHeight) {
+          inner.style.minHeight = newMin + 'px';
+        }
+
+        // 새 메모들 그리기 (모두 saved 상태)
+        newMemos.forEach(memo => {
+          addMemoToWall(memo.x, memo.y, memo, true, true);
+        });
+
+        updateSaveButtonState(loadedDocIds.size);
+        updateScrollHint();
+      }, (err) => {
+        console.error('Firestore 실시간 로드 실패:', err);
+        showToast('메모 불러오기 실패. 새로고침 해주세요.', 'error');
+      });
+    } catch (err) {
+      console.error('Firestore 연결 실패:', err);
+      showToast('서버 연결 실패. 새로고침 해주세요.', 'error');
+    }
+
     hasUnsavedChanges = false;
-    updateSaveButtonState(memos.length);
-
-    // 스크롤은 맨 위로
-    scrollArea.scrollTop = 0;
-    updateScrollHint();
   }
 
   function waitForLayout() {
@@ -2441,6 +2705,18 @@
     }
     // 메모 로드는 goToWall()에서 수행
   });
+
+  // ============ 전역 등록 (ES 모듈에서 onclick 인라인 핸들러용) ============
+  window.goToWall = goToWall;
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+  window.switchTab = switchTab;
+  window.toggleEraser = toggleEraser;
+  window.setEraserSize = setEraserSize;
+  window.clearCanvas = clearCanvas;
+  window.goToPlace = goToPlace;
+  window.closeLightbox = closeLightbox;
+  window.saveMemos = saveMemos;
 </script>
 
 </body>
